@@ -9,8 +9,30 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.exceptions import InvalidSignature
 import hashlib
-import torch
-from insightface.app import FaceAnalysis
+# NOTE: heavy ML deps are imported lazily to keep simple imports fast (CI-friendly)
+
+# lazy-loaded face app
+_face_app = None
+
+def get_face_app():
+    global _face_app
+    if _face_app is not None:
+        return _face_app
+    try:
+        from insightface.app import FaceAnalysis
+    except Exception as e:
+        raise ImportError("insightface is required for face analysis: " + str(e))
+
+    # import torch here so missing heavy deps don't break CI/test collection
+    try:
+        import torch
+        ctx_id = 0 if torch.cuda.is_available() else -1
+    except Exception:
+        ctx_id = -1
+
+    _face_app = FaceAnalysis(providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+    _face_app.prepare(ctx_id=ctx_id, det_size=(640, 640))
+    return _face_app
 
 # ============================
 # 1. Persistent Issuer Key
@@ -40,8 +62,6 @@ ISSUER_DID = "did:key:" + ISSUER_PUBLIC_PEM.hex()
 # ============================
 # 2. Face → Fractal ID
 # ============================
-app = FaceAnalysis(providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
-app.prepare(ctx_id=0 if torch.cuda.is_available() else -1, det_size=(640, 640))
 
 def b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).decode().rstrip("=")
@@ -54,6 +74,7 @@ def fract_hash(data: bytes) -> bytes:
 
 def fractal_id_from_image(img_bytes: bytes, chunks: int = 8) -> str:
     import cv2, numpy as np
+    app = get_face_app()
     img = cv2.imdecode(np.frombuffer(img_bytes, np.uint8), cv2.IMREAD_COLOR)
     faces = app.get(img)
     if not faces:
