@@ -1,7 +1,15 @@
 import re
 import time
+import sys
+import os
 import pytest
 from unittest.mock import patch
+
+# Ensure the repository top-level (where `consent_core.py` lives) is on sys.path
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
 from consent_core import (
     issue_consent_capsule,
     verify_capsule_and_get_scope,
