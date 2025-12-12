@@ -1,0 +1,11 @@
+/.venv
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+issuer_key.pem
+revoked_capsules.txt
+.pytest_cache/
+.mypy_cache/
+.vscode/
