@@ -1,5 +1,7 @@
 # X Identity Shield — Consent Layer v0.6
 
+[![CI](https://github.com/FractalFuryan/x-consent-layer/actions/workflows/ci.yml/badge.svg)](https://github.com/FractalFuryan/x-consent-layer/actions)
+
 **The cryptographic consent firewall that ends non-consensual deepfake nudity.**
 
 - No blockchain
