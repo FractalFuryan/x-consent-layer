@@ -1,0 +1,47 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Data files
+issuer_key.pem
+revoked_capsules.txt
+*.pem
+*.txt
+
+# Git
+.git/
+.gitignore
+
+# Documentation drafts
+*.md~
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CI/CD
+.github/
+
+# Backups
+*.production-backup
