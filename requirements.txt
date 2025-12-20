@@ -1,8 +1,4 @@
 fastapi
-uvicorn[standard]
-python-multipart
-torch
-torchvision
-insightface==0.7.3
-opencv-python-headless
+uvicorn
 cryptography
+pydantic

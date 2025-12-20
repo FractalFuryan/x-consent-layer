@@ -1,68 +1,49 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-import consent_core
+from typing import Dict, Optional
 
-app = FastAPI(title="X Consent Layer API")
+from consent_core import (
+    fractal_id_from_image,
+    issue_capsule,
+    revoke_capsule,
+    verify_and_enforce,
+)
 
-class IssueRequest(BaseModel):
+app = FastAPI(title="X Identity Shield — Consent Layer")
+
+class CapsuleRequest(BaseModel):
     fractal_id: str
-    holder_did: str
     scope: Dict[str, str]
-    price_usd: Optional[float] = 0.0
-    friends_allowlist: Optional[List[str]] = None
-    audience: Optional[List[str]] = None
-    expires: Optional[int] = None
-
-@app.post("/fractal-id")
-async def fractal_id(file: UploadFile = File(...)):
-    data = await file.read()
-    try:
-        fid = consent_core.fractal_id_from_image(data)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return {"fractal_id": fid}
-
-@app.post("/capsule/issue")
-async def capsule_issue(req: IssueRequest):
-    try:
-        token = consent_core.issue_consent_capsule(
-            fractal_id=req.fractal_id,
-            scope=req.scope,
-            holder_did=req.holder_did,
-            price_usd=req.price_usd or 0.0,
-            friends_allowlist=req.friends_allowlist,
-            audience=req.audience,
-            expires=req.expires
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return {"capsule_token": token}
+    expires_in: Optional[int] = 3600
 
 class CheckRequest(BaseModel):
+    fractal_id: str
     prompt: str
-    capsule_token: Optional[str] = None
-    requester_fid: Optional[str] = None
+    capsule: Optional[str] = None
+
+@app.post("/fractal-id")
+async def generate_fractal_id(file: UploadFile = File(...)):
+    image_bytes = await file.read()
+    return {"fractal_id": fractal_id_from_image(image_bytes)}
+
+@app.post("/capsule/issue")
+def issue(req: CapsuleRequest):
+    token = issue_capsule(
+        fractal_id=req.fractal_id,
+        scope=req.scope,
+        expires_in=req.expires_in,
+    )
+    return {"capsule": token}
 
 @app.post("/check")
-async def check_endpoint(file: UploadFile = File(...), prompt: str = Form(...), capsule_token: Optional[str] = Form(None), requester_fid: Optional[str] = Form(None)):
-    img = await file.read()
-    try:
-        res = consent_core.check_generation_allowed(
-            capsule_token=capsule_token,
-            reference_image_bytes=img,
-            prompt=prompt,
-            requester_fid=requester_fid
-        )
-    except Exception as e:
-        return JSONResponse(status_code=400, content={"allowed": False, "reason": str(e), "price": 0.0})
-    return res
+def check(req: CheckRequest):
+    return verify_and_enforce(
+        fractal_id=req.fractal_id,
+        prompt=req.prompt,
+        capsule_token=req.capsule,
+    )
 
 @app.post("/capsule/revoke/{capsule_id}")
-async def revoke(capsule_id: str):
-    try:
-        consent_core.revoke_capsule(capsule_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def revoke(capsule_id: str):
+    revoke_capsule(capsule_id)
     return {"revoked": capsule_id}
